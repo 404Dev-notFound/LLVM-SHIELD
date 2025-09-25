@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LLVM Signature</title>
+
+  <!-- Cursive Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+
+  <style>
+    /* Colors */
+    :root {
+      --primary: #ED37C7;
+      --secondary: #8B0000;
+      --accent: #5B0202;
+      --background: #200E01;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background: radial-gradient(circle at top left, var(--accent), var(--background));
+      font-family: 'Great Vibes', cursive;
+      overflow: hidden;
+    }
+
+    /* Signature Animation */
+    .signature {
+      font-size: 120px;
+      fill: transparent;
+      stroke: var(--primary);
+      stroke-width: 2px;
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: write 3s ease forwards;
+      filter: drop-shadow(0 0 12px rgba(237,55,199,0.6));
+    }
+
+    @keyframes write {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    /* Button */
+    .btn {
+      margin-top: 50px;
+      padding: 16px 48px;
+      font-size: 22px;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 1px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(237,55,199,0.2);
+    }
+
+    .btn:hover {
+      transform: scale(1.1);
+      font-weight: 700;
+      box-shadow: 0 6px 30px rgba(237,55,199,0.5);
+      filter: brightness(1.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Signature -->
+  <svg width="600" height="200">
+    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" class="signature">LLVM</text>
+  </svg>
+
+  <!-- Button -->
+  <button class="btn">GET STARTED</button>
+
+</body>
+</html>

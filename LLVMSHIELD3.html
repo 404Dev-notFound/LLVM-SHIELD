@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LLVM Signature</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+
+  <style>
+    /* Color Theme: Black + Navy + Purple */
+    :root {
+      --black: #0a0a0a;
+      --navy: #0d1b2a;
+      --purple: #6a0dad;
+      --highlight: #ED37C7;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      background: radial-gradient(circle at top left, var(--navy), var(--black));
+      font-family: 'Great Vibes', cursive;
+      overflow: hidden;
+    }
+
+    /* Signature Animation with Glow */
+  .signature {
+    font-family: 'Fredoka One', cursive; /* Bubble font */
+    font-size: 240px; /* doubled from 120px */
+    fill: transparent;
+    stroke: var(--highlight);
+    stroke-width: 3px; /* slightly thicker for bigger font */
+    stroke-dasharray: 2000; /* adjust for bigger text */
+    stroke-dashoffset: 2000;
+    animation: write 3s ease forwards;
+    filter: drop-shadow(0 0 30px var(--highlight)) drop-shadow(0 0 50px var(--purple));
+
+  }
+
+
+    @keyframes write {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    /* Subtitle / Team Name */
+    .subtitle {
+      margin-top: -30px;
+      font-size: 32px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      
+      color: #ffffffcc; /* fallback color */
+      background: linear-gradient(90deg, var(--highlight), var(--purple));
+      
+      /* Gradient Text with vendor prefixes */
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      -moz-background-clip: text;
+      -moz-text-fill-color: transparent;
+      background-clip: text;
+      
+      text-shadow: 0 0 8px var(--highlight), 0 0 12px var(--purple);
+      animation: fadeIn 3s ease forwards;
+      opacity: 0;
+    }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Button */
+    .btn {
+  margin-top: 60px;
+  padding: 18px 56px;
+  font-size: 22px;
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(135deg, var(--purple), var(--navy));
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 1px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 20px #ed37c7;
+  
+  /* Glow / pulse animation */
+  animation: pulse 2s infinite;
+}
+
+.btn:hover {
+  transform: scale(1.15);
+  font-weight: 700;
+  box-shadow: 0 8px 40px rgba(106,13,173,0.8);
+  filter: brightness(1.4);
+  animation: none; /* stop pulse on hover for better effect */
+}
+
+/* Pulse animation keyframes */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 4px 20px rgba(106,13,173,0.3);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 8px 40px rgba(106,13,173,0.6);
+    transform: scale(1.05);
+  }
+  100% {
+    box-shadow: 0 4px 20px rgba(106,13,173,0.3);
+    transform: scale(1);
+  }
+}
+
+
+    /* Smooth fade-in delay for team name */
+    .subtitle {
+      animation-delay: 1.5s;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Signature -->
+  <svg width="1200" height="500">
+    <text x="50%" y="50%" text-anchor="middle" dominant-baseline="middle" class="signature">SHIELD</text>
+  </svg>
+
+  <!-- Team Name -->
+  <div class="subtitle">Team Rebel Coders</div>
+
+  <!-- Button with link -->
+  <a href="GETSTARTED followup5.html">
+    <button class="btn">GET STARTED</button>
+  </a>
+
+</body>
+</html>

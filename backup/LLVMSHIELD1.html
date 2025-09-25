@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LLVM SHIELD</title>
+  <style>
+    /* Color palette */
+    :root {
+      --primary: #ED37C7;
+      --secondary: #8B0000;
+      --tertiary: #5B0202;
+      --background: #200E01;
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--background);
+      color: var(--primary);
+      font-family: 'Segoe UI', cursive, sans-serif;
+      overflow: hidden;
+    }
+
+    .signature-container {
+      position: relative;
+      width: 80%;
+      max-width: 800px;
+    }
+
+    svg {
+      width: 100%;
+      height: auto;
+    }
+
+    path {
+      fill: none;
+      stroke: var(--primary);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 1000;
+      stroke-dashoffset: 1000;
+      animation: draw 6s forwards ease-in-out;
+    }
+
+    @keyframes draw {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2rem;
+      margin-top: 2rem;
+      color: var(--secondary);
+      letter-spacing: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="signature-container">
+    <!-- Example path that simulates cursive writing of "LLVM SHIELD" -->
+    <!-- This path is an approximation for demo; real signature-like paths should be exported from an SVG tool -->
+    <svg viewBox="0 0 1200 200">
+      <path d="M50 150 Q80 50 120 150 T200 150 
+               M220 150 Q240 100 260 150 
+               M280 150 Q300 50 340 150 
+               M360 150 Q380 100 400 150
+               M460 150 Q480 70 520 150
+               M540 150 Q560 100 580 150
+               M600 150 Q620 50 660 150
+               M700 150 Q720 100 740 150
+               M780 150 Q800 50 840 150
+               M880 150 Q900 100 940 150
+               M980 150 Q1000 50 1040 150" />
+    </svg>
+    <h1>LLVM SHIELD</h1>
+  </div>
+</body>
+</html>

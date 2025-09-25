@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Obfuscate — LLVM Obfuscation UI</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root{
+    --bg-0:#0b0b12; --bg-1:#121224; --card:#161626;
+    --accent:#8B00FF; --accent-2:#DA70D6; --muted:#9aa;
+    --green:#0bb24a; --danger:#ff5c5c; --cyan:#00e6e6;
+    --glass: rgba(255,255,255,0.03);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:'Roboto',sans-serif; background:linear-gradient(180deg,var(--bg-0),#0f0f1a);
+    color:#eaeaf2; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+  }
+  header{
+    display:flex; align-items:center; justify-content:space-between; padding:18px 28px;
+    background:linear-gradient(90deg,rgba(0,0,0,0.6),rgba(255,255,255,0.02));
+    border-bottom:1px solid rgba(255,255,255,0.03);
+  }
+  header h1{margin:0; color:var(--accent); letter-spacing:1px; font-size:20px; text-shadow:0 0 8px rgba(139,0,255,0.18);}
+  nav a{color:#dfe0ff; margin-left:18px; font-weight:500; text-decoration:none}
+  nav a:hover{color:var(--accent-2)}
+
+  .container{display:flex; gap:24px; padding:28px; align-items:flex-start; justify-content:center;}
+  /* left pane = wizard card */
+  .wizard{
+    width:760px; background:linear-gradient(180deg,var(--card),#101020); border-radius:14px;
+    padding:20px; box-shadow:0 10px 40px rgba(0,0,0,0.6); border:1px solid rgba(255,255,255,0.03);
+  }
+  .wizard .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;}
+  .steps-indicator{display:flex; gap:8px; align-items:center;}
+  .step-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,0.06);box-shadow:0 0 6px rgba(0,0,0,0.6)}
+  .step-dot.active{background:var(--accent); box-shadow:0 0 12px rgba(139,0,255,0.22);}
+  .subtitle{color:var(--muted); font-size:13px}
+
+  h2{color:var(--accent-2); margin:8px 0 10px; font-size:18px;}
+  label{display:block; margin:8px 0 6px; font-weight:500; color:#e7e7f5}
+  .row{display:flex; gap:12px; align-items:center}
+
+  /* inputs */
+  .file-upload{display:flex; gap:12px; align-items:center}
+  .btn{padding:10px 14px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+  .btn.primary{background:linear-gradient(90deg,var(--accent),var(--accent-2)); color:#fff; box-shadow:0 6px 18px rgba(139,0,255,0.12)}
+  .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04); color:#ddd}
+  .btn.small{padding:8px 10px; font-weight:600; border-radius:6px}
+
+  input[type=file]{display:none}
+  .file-list{margin-top:10px; max-height:120px; overflow:auto; padding-right:6px}
+  .file-item{display:flex; justify-content:space-between; gap:12px; padding:8px; border-radius:8px; background:var(--glass); border:1px solid rgba(255,255,255,0.02); font-family:monospace; font-size:13px}
+  .file-item i{cursor:pointer;color:var(--accent)}
+
+  select, textarea, input[type=range]{width:100%; padding:10px; border-radius:8px; border:none; background:#0e0e18; color:#fff}
+  .small-muted{font-size:12px;color:var(--muted)}
+
+  .toggle{display:flex; gap:8px; align-items:center}
+  .toggle input{transform:scale(1.2)}
+
+  /* progress */
+  .progress-wrap{margin-top:12px; background:#0c0c12; border-radius:10px; padding:6px; border:1px solid rgba(255,255,255,0.02)}
+  .progress-bar{height:14px; width:0%; border-radius:8px; background:linear-gradient(90deg,var(--accent),var(--cyan)); box-shadow:0 6px 18px rgba(0,0,0,0.6)}
+  .log-console{height:150px; overflow:auto; padding:10px; border-radius:8px; margin-top:12px; background:#07070b; font-family:monospace; font-size:13px; color:#9ff3ff; border:1px solid rgba(0,230,230,0.06)}
+
+  /* expected output */
+  .expected-card{margin-top:14px; background:linear-gradient(180deg,#0f0f18,#0b0b12); padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,0.03)}
+  .expected-card h3{margin:0 0 8px; color:var(--accent-2)}
+  .expected-list{list-style:none;padding:0;margin:0; display:grid; gap:8px}
+  .expected-list li{display:flex; justify-content:space-between; align-items:center; padding:10px; border-radius:8px; background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005)); font-family:monospace}
+  .status{min-width:110px; text-align:right; padding:6px 8px; border-radius:8px; font-weight:700}
+  .pending{background:#1c1c22;color:#bdbdcf}
+  .running{background:linear-gradient(90deg,#053f3f,#1c7f7f); color:#dffdfd; box-shadow:0 8px 18px rgba(0,200,200,0.06)}
+  .done{background:linear-gradient(90deg,#087a35,#0bb24a); color:#fff; box-shadow:0 10px 24px rgba(11,178,74,0.08)}
+  .failed{background:linear-gradient(90deg,#8b1b1b,#ff5c5c); color:#fff}
+
+  .ts{font-size:11px; color:var(--muted); margin-left:8px}
+
+  /* right pane = advanced / report */
+  .side{
+    width:360px; display:flex; flex-direction:column; gap:12px;
+  }
+  .card{background:linear-gradient(180deg,#0e0e18,#0a0a10); border-radius:12px; padding:14px; border:1px solid rgba(255,255,255,0.03)}
+  .card h4{margin:0 0 8px; color:var(--accent-2)}
+  .draggable-list{display:flex; flex-direction:column; gap:8px}
+  .pass-item{display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:8px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.02); cursor:grab}
+  .pass-item.dragging{opacity:0.6; transform:scale(0.98)}
+  .pass-badge{background:rgba(0,0,0,0.3); padding:6px 8px; border-radius:8px; color:var(--muted); font-weight:700}
+
+  .report-json{height:220px; overflow:auto; background:#06060a; padding:10px; border-radius:8px; font-family:monospace; font-size:13px; color:#aee}
+  .muted{color:var(--muted); font-size:13px}
+
+  footer{padding:16px 28px; color:var(--muted); font-size:13px; border-top:1px solid rgba(255,255,255,0.02)}
+  .small-row{display:flex; gap:8px; align-items:center}
+  .chip{padding:6px 8px; background:rgba(255,255,255,0.02); border-radius:8px; font-weight:600; font-size:13px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Obfuscate</h1>
+  <nav>
+    <a href="#">Home</a>
+    <a href="#">Docs</a>
+    <a href="#">Support</a>
+  </nav>
+</header>
+
+<div class="container">
+  <!-- Wizard / Main -->
+  <div class="wizard" id="wizard">
+    <div class="topbar">
+      <div class="steps-indicator">
+        <div class="step-dot active" id="dot1"></div>
+        <div class="step-dot" id="dot2"></div>
+        <div class="step-dot" id="dot3"></div>
+        <div class="step-dot" id="dot4"></div>
+      </div>
+      <div class="subtitle">LLVM Plugin Integration • Live Report • WebSocket-ready</div>
+    </div>
+
+    <!-- Step 1 Upload -->
+    <div id="step-1" class="step active">
+      <h2>Step 1 — Upload source files</h2>
+      <div class="file-upload">
+        <label class="btn primary" for="sourceFiles"><i class="fa fa-upload"></i>&nbsp; Upload Source</label>
+        <input id="sourceFiles" type="file" multiple />
+        <button class="btn ghost small" onclick="clearFiles()">Clear</button>
+        <div style="flex:1"></div>
+        <div class="small-muted">Accepted: .c .cpp .cc .h</div>
+      </div>
+      <div id="fileList" class="file-list" style="margin-top:12px"></div>
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn primary" onclick="gotoStep(2)">Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 2 Platform & Targets -->
+    <div id="step-2" class="step" style="display:none">
+      <h2>Step 2 — Target & Platform</h2>
+      <label>Target Platform</label>
+      <select id="targetPlatform">
+        <option value="linux">Linux</option>
+        <option value="windows">Windows</option>
+        <option value="mac">Mac</option>
+      </select>
+
+      <label style="margin-top:10px">Build Flags (optional)</label>
+      <textarea id="buildFlags" rows="2" placeholder="-O2 -march=native"></textarea>
+
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn ghost small" onclick="gotoStep(1)">&larr; Back</button>
+        <button class="btn primary" onclick="gotoStep(3)">Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 3 Configure -->
+    <div id="step-3" class="step" style="display:none">
+      <h2>Step 3 — Configure obfuscation</h2>
+      <label>Obfuscation Level</label>
+      <select id="obfLevel">
+        <option>Low</option><option>Medium</option><option selected>High</option><option>Extreme</option>
+      </select>
+
+      <label style="margin-top:8px">Cycles (control-flow depth)</label>
+      <div class="row" style="align-items:center">
+        <input type="range" id="cyclesRange" min="1" max="10" value="3" />
+        <div class="chip" id="cyclesValue">3</div>
+      </div>
+      <div style="height:8px"></div>
+
+      <div class="row" style="margin-top:6px">
+        <div class="toggle">
+          <input type="checkbox" id="stringEncrypt" checked />
+          <label for="stringEncrypt">String Encryption</label>
+        </div>
+        <div style="flex:1"></div>
+        <div class="small-muted">Bogus %</div>
+        <input type="range" id="bogusRange" min="0" max="60" value="20" style="width:160px" />
+        <div class="chip" id="bogusValue">20%</div>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button class="btn ghost small" onclick="gotoStep(2)">&larr; Back</button>
+        <button class="btn primary" onclick="gotoStep(4)">Next &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Step 4 Start -->
+    <div id="step-4" class="step" style="display:none">
+      <h2>Step 4 — Start & Monitor</h2>
+
+      <div style="display:flex; gap:10px; align-items:center;">
+        <button class="btn primary" id="startBtn" onclick="beginRun()">Compile & Obfuscate</button>
+        <button class="btn ghost small" onclick="cancelRun()">Cancel / Reset</button>
+        <div style="flex:1"></div>
+        <button class="btn ghost small" onclick="openAdvancedModal()">Advanced</button>
+      </div>
+
+      <div class="progress-wrap" style="margin-top:12px">
+        <div class="progress-bar" id="progressBar" style="width:0%"></div>
+      </div>
+
+      <div id="logConsole" class="log-console"></div>
+
+      <div class="expected-card" style="margin-top:12px">
+        <h3>Expected Output (live):</h3>
+        <ul class="expected-list" id="expectedList">
+          <li data-key="inputParams">Logs all input parameters <span class="status pending" id="st-inputParams">Pending</span></li>
+          <li data-key="fileAttrs">Attributes of output file incl. size & method <span class="status pending" id="st-fileAttrs">Pending</span></li>
+          <li data-key="bogusAmount">Amount of bogus code generated <span class="status pending" id="st-bogusAmount">Pending</span></li>
+          <li data-key="cyclesCompleted">Number of cycles completed <span class="status pending" id="st-cyclesCompleted">Pending</span></li>
+          <li data-key="stringEnc">String encryption done <span class="status pending" id="st-stringEnc">Pending</span></li>
+          <li data-key="fakeInserted">Fake code inserted <span class="status pending" id="st-fakeInserted">Pending</span></li>
+          <li data-key="downloadReady">Obfuscated file ready for download <span class="status pending" id="st-downloadReady">Pending</span></li>
+        </ul>
+      </div>
+
+      <div id="successBanner" style="display:none; margin-top:12px; background:linear-gradient(90deg,#063,#0bb24a); padding:10px; border-radius:8px; color:#fff; text-align:center">
+        Process Completed Successfully — <button class="btn small" id="downloadBtn">Download Obfuscated Binary</button>
+        &nbsp;&nbsp; <button class="btn small" onclick="exportReportPDF()">Export Report (PDF)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right side: Advanced + Report -->
+  <div class="side">
+    <div class="card">
+      <h4>Advanced — Pass Order</h4>
+      <div class="muted" style="margin-bottom:8px">Drag to reorder passes. These map to <code>-passes="a,b,c"</code></div>
+      <div id="draggableList" class="draggable-list" aria-label="passes">
+        <div class="pass-item" draggable="true" data-pass="cfla"><span>CF-Flatten</span><span class="pass-badge">Time:Medium</span></div>
+        <div class="pass-item" draggable="true" data-pass="bogus"><span>Bogus Injection</span><span class="pass-badge">Time:Low</span></div>
+        <div class="pass-item" draggable="true" data-pass="strenc"><span>String Encrypt</span><span class="pass-badge">Time:Low</span></div>
+        <div class="pass-item" draggable="true" data-pass="sym"><span>Symbol Rename</span><span class="pass-badge">Time:Low</span></div>
+        <div class="pass-item" draggable="true" data-pass="anti"><span>Anti-debug</span><span class="pass-badge">Time:High</span></div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <button class="btn primary small" onclick="applyPassOrder()">Apply Order</button>
+        <button class="btn ghost small" onclick="resetPassOrder()">Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4>Live Report JSON</h4>
+      <div class="muted" style="margin-bottom:6px">Shows last JSON event from server (or simulated log)</div>
+      <pre id="reportJson" class="report-json">{ "waiting":"no events yet" }</pre>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn primary small" onclick="copyReport()">Copy</button>
+        <button class="btn ghost small" onclick="clearReport()">Clear</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <div class="small-row">
+    <div class="muted">Connected:</div>
+    <div id="wsStatus" class="chip">ws://localhost:3000 (trying)</div>
+    <div style="width:10px"></div>
+    <div class="muted">Tip: Run your Node server and emit JSON events to update the UI live</div>
+  </div>
+</footer>
+
+<!-- Advanced Modal (simple inline modal) -->
+<div id="advancedModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center">
+  <div style="width:720px; max-height:80vh; overflow:auto; background:#090913; padding:18px; border-radius:12px; margin:auto; border:1px solid rgba(255,255,255,0.03)">
+    <div style="display:flex; justify-content:space-between; align-items:center">
+      <h3 style="margin:0; color:var(--accent-2)">Advanced Configuration</h3>
+      <button class="btn ghost small" onclick="closeAdvancedModal()">Close</button>
+    </div>
+
+    <div style="margin-top:12px">
+      <label>Custom LLVM Pass Order (Comma separated)</label>
+      <input id="customPassOrder" placeholder="cfla,bogus,strenc" />
+      <label style="margin-top:10px">Expert Flags / Parameters</label>
+      <textarea id="expertFlags" rows="5" placeholder="--cycles=3 --bogus=20"></textarea>
+
+      <div style="margin-top:10px; display:flex; gap:8px;">
+        <button class="btn primary small" onclick="saveAdvanced()">Apply</button>
+        <button class="btn ghost small" onclick="closeAdvancedModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- <script>
+/* ---------- Util & UI wiring ---------- */
+const steps = [1,2,3,4];
+function gotoStep(n){
+  steps.forEach(s=>{ document.getElementById('step-'+s).style.display='none'; document.getElementById('dot'+s).classList.remove('active'); });
+  document.getElementById('step-'+n).style.display='block'; document.getElementById('dot'+n).classList.add('active');
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* File management */
+const fileInput = document.getElementById('sourceFiles');
+fileInput.addEventListener('change', e=>renderFiles(e.target.files));
+function renderFiles(files){
+  const wrap = document.getElementById('fileList'); wrap.innerHTML='';
+  Array.from(files).forEach(f=>{
+    const div = document.createElement('div'); div.className='file-item';
+    div.innerHTML = `<div title="${f.name}">${f.name}</div><div style="display:flex;gap:8px;align-items:center"><div style="font-size:12px;color:var(--muted)">${Math.round(f.size/1024)} KB</div><i style="cursor:pointer;color:var(--accent)" title="Remove">✖</i></div>`;
+    div.querySelector('i').addEventListener('click', ()=>{ div.remove(); /* doesn't remove from input.files - keep simple */ });
+    wrap.appendChild(div);
+  });
+}
+function clearFiles(){ fileInput.value=''; document.getElementById('fileList').innerHTML=''; }
+
+/* cycles & bogus UI sync */
+const cyclesRange = document.getElementById('cyclesRange'), cyclesValue = document.getElementById('cyclesValue');
+const bogusRange = document.getElementById('bogusRange'), bogusValue = document.getElementById('bogusValue');
+cyclesRange.addEventListener('input', ()=> cyclesValue.innerText = cyclesRange.value);
+bogusRange.addEventListener('input', ()=> bogusValue.innerText = bogusRange.value + '%');
+
+/* Draggable pass-order */
+const list = document.getElementById('draggableList');
+let dragSrc = null;
+list.addEventListener('dragstart', e => { dragSrc = e.target; e.target.classList.add('dragging'); });
+list.addEventListener('dragend', e => { if(e.target) e.target.classList.remove('dragging'); dragSrc=null; });
+list.addEventListener('dragover', e => { e.preventDefault(); const el = getPassItem(e.target); if(el && dragSrc !== el){ const rect = el.getBoundingClientRect(); const after = (e.clientY - rect.top) > rect.height/2; el.parentNode.insertBefore(dragSrc, after ? el.nextSibling : el); }});
+function getPassItem(t){ while(t && !t.classList?.contains?.('pass-item')) t = t.parentElement; return t; }
+function applyPassOrder(){
+  const passes = Array.from(list.children).map(n=>n.dataset.pass).join(',');
+  showLog(`Applied pass order: ${passes}`);
+  // set into advanced custom field too
+  document.getElementById('customPassOrder').value = passes;
+}
+function resetPassOrder(){
+  // simple reset - reorder to default
+  const defaults = ['cfla','bogus','strenc','sym','anti'];
+  list.innerHTML = '';
+  defaults.forEach(p=>{
+    const nameMap = {cfla:'CF-Flatten', bogus:'Bogus Injection', strenc:'String Encrypt', sym:'Symbol Rename', anti:'Anti-debug'};
+    const div = document.createElement('div'); div.className='pass-item'; div.setAttribute('draggable','true'); div.dataset.pass=p;
+    div.innerHTML = `<span>${nameMap[p]||p}</span><span class="pass-badge">Time:Med</span>`;
+    list.appendChild(div);
+  });
+}
+
+/* Report copy/clear */
+function copyReport(){ navigator.clipboard?.writeText(document.getElementById('reportJson').innerText).then(()=> alert('Copied report JSON to clipboard')) }
+function clearReport(){ document.getElementById('reportJson').innerText = '{ "waiting":"no events yet" }' }
+
+/* Advanced modal simple functions */
+function openAdvancedModal(){ document.getElementById('advancedModal').style.display='flex' }
+function closeAdvancedModal(){ document.getElementById('advancedModal').style.display='none' }
+function saveAdvanced(){ const p = document.getElementById('customPassOrder').value.trim(); if(p) showLog('Saved custom pass order: '+p); closeAdvancedModal(); }
+
+/* UI helpers */
+function showLog(msg){
+  const lc = document.getElementById('logConsole');
+  lc.innerText += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+  lc.scrollTop = lc.scrollHeight;
+}
+
+/* ---------- Expected output status control ---------- */
+const expectedKeys = ['inputParams','fileAttrs','bogusAmount','cyclesCompleted','stringEnc','fakeInserted','downloadReady'];
+function setExpectedStatus(key, state, opt_message){
+  const el = document.getElementById('st-'+key);
+  if(!el) return;
+  el.classList.remove('pending','running','done','failed');
+  el.classList.add(state);
+  if(opt_message) el.innerText = opt_message;
+  else {
+    if(state==='pending') el.innerText = 'Pending';
+    if(state==='running') el.innerText = 'Running...';
+    if(state==='done') el.innerText = 'Done';
+    if(state==='failed') el.innerText = 'Failed';
+  }
+  const li = el.closest('li');
+  const existingTs = li.querySelector('.ts'); if(existingTs) existingTs.remove();
+  if(state==='done' || state==='failed'){
+    const ts = document.createElement('span'); ts.className='ts'; ts.innerText = new Date().toLocaleTimeString();
+    li.appendChild(ts);
+    // light audible feedback
+    playBeep();
+  }
+}
+
+/* ---------- WebSocket hookup (server should send JSON events) ---------- */
+let ws, wsConnected = false;
+function connectWS(){
+  const statusEl = document.getElementById('wsStatus');
+  try {
+    ws = new WebSocket('ws://localhost:3000');
+  } catch(e){
+    statusEl.innerText = 'ws://localhost:3000 (failed)';
+    statusEl.style.background = 'rgba(255,0,0,0.06)';
+    simulateFallback();
+    return;
+  }
+  ws.onopen = ()=>{ wsConnected = true; statusEl.innerText = 'ws://localhost:3000 (connected)'; statusEl.style.background = 'rgba(11,178,74,0.06)'; showLog('WebSocket connected') }
+  ws.onmessage = (ev)=> {
+    // Expect server to send JSON events like: { event: "bogusAmount", state:"running", message:"..." , payload: {...} }
+    try {
+      const j = JSON.parse(ev.data);
+      document.getElementById('reportJson').innerText = JSON.stringify(j, null, 2);
+      handleServerEvent(j);
+    } catch(e){
+      showLog('Malformed WS event: ' + ev.data);
+    }
+  }
+  ws.onerror = (e)=> { showLog('WS error'); simulateFallback(); }
+  ws.onclose = ()=> { wsConnected=false; statusEl.innerText = 'ws://localhost:3000 (closed)'; statusEl.style.background='rgba(255,255,255,0.02)'; showLog('WebSocket closed'); }
+}
+function handleServerEvent(json){
+  // map event to status update
+  if(json.event && expectedKeys.includes(json.event)){
+    const st = json.state || 'running';
+    setExpectedStatus(json.event, st, json.message || undefined);
+    // update progress bar heuristically if payload.percent provided
+    if(json.payload?.percent !== undefined) document.getElementById('progressBar').style.width = json.payload.percent + '%';
+    if(json.event === 'downloadReady' && st === 'done') {
+      document.getElementById('successBanner').style.display='block';
+    }
+    if(json.event === 'fileAttrs' && st === 'done' && json.payload?.size) {
+      showLog(`Output size: ${json.payload.size} bytes`);
+    }
+  } else if(json.info){
+    showLog('INFO: ' + json.info);
+  } else {
+    showLog('Event: ' + JSON.stringify(json));
+  }
+}
+
+/* If WS cannot connect - simulated fallback when user clicks start */
+function simulateFallback(){
+  document.getElementById('wsStatus').innerText = 'ws://localhost:3000 (no server)';
+  document.getElementById('wsStatus').style.background = 'rgba(255,255,255,0.02)';
+}
+
+/* ---------- Run simulation / start / cancel ---------- */
+let runTimerIDs = [];
+function beginRun(){
+  // Reset UI
+  expectedKeys.forEach(k => setExpectedStatus(k, 'pending'));
+  document.getElementById('progressBar').style.width='0%';
+  document.getElementById('logConsole').innerText='';
+  document.getElementById('successBanner').style.display='none';
+  showLog('Starting obfuscation workflow...');
+
+  // If ws connected, send a start message to server
+  if(wsConnected) {
+    const payload = {
+      action: 'start',
+      files: Array.from(document.getElementById('fileList').children).map(n => n.innerText.split(/\s/)[0]),
+      options: {
+        obfLevel: document.getElementById('obfLevel').value,
+        cycles: cyclesRange.value,
+        bogusPercent: bogusRange.value,
+        stringEncrypt: document.getElementById('stringEncrypt').checked,
+        passes: document.getElementById('customPassOrder').value || Array.from(list.children).map(n=>n.dataset.pass).join(',')
+      }
+    };
+    ws.send(JSON.stringify(payload));
+    showLog('Start command sent to server via WebSocket.');
+    return;
+  }
+
+  // Otherwise simulate sequence locally (same timings as earlier)
+  const sequence = [
+    {key:'inputParams', delay:400, note:'Parameters logged', pct:8},
+    {key:'fileAttrs', delay:1100, note:'Computing file attributes', pct:20, payload:{size: 123456}},
+    {key:'bogusAmount', delay:1900, note:'Injecting bogus code', pct:45},
+    {key:'cyclesCompleted', delay:2500, note:'Applying cycles', pct:68},
+    {key:'stringEnc', delay:3300, note:'Encrypting strings', pct:82},
+    {key:'fakeInserted', delay:3900, note:'Inserting fake code', pct:92},
+    {key:'downloadReady', delay:4600, note:'Finalizing binary', pct:100}
+  ];
+
+  // schedule
+  sequence.forEach((s, idx) => {
+    const t1 = setTimeout(()=>{ setExpectedStatus(s.key, 'running','Running...'); showLog(s.note + ' started'); document.getElementById('progressBar').style.width = s.pct * 0.6 + '%'; }, s.delay);
+    runTimerIDs.push(t1);
+    const t2 = setTimeout(()=>{ setExpectedStatus(s.key, 'done'); showLog(s.note + ' done'); document.getElementById('progressBar').style.width = s.pct + '%';
+      if(s.payload) handleServerEvent({ event: s.key, state: 'done', payload: s.payload, message: s.note });
+      if(s.key === 'downloadReady'){ document.getElementById('successBanner').style.display='block'; }
+    }, s.delay + 700);
+    runTimerIDs.push(t2);
+  });
+}
+function cancelRun(){
+  runTimerIDs.forEach(id=>clearTimeout(id)); runTimerIDs=[]; showLog('Run canceled by user'); document.getElementById('progressBar').style.width='0%'; expectedKeys.forEach(k=>setExpectedStatus(k,'pending')); document.getElementById('successBanner').style.display='none';
+}
+
+/* ---------- download & report ---------- */
+document.getElementById('downloadBtn').addEventListener('click', ()=>{
+  const blob = new Blob(['OBFUSCATED_BINARY_PLACEHOLDER'], {type:'application/octet-stream'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'obfuscated_binary.bin'; a.click(); URL.revokeObjectURL(url);
+  showLog('Downloaded obfuscated binary (simulated).');
+});
+
+function exportReportPDF(){
+  // stub — you can generate real PDF on server or client (jsPDF)
+  showLog('Export PDF requested (stub).');
+  alert('PDF export is a stub in this demo. Hook to server or use jsPDF to generate.');
+}
+
+/* ---------- simple beep on done ---------- */
+function playBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine'; o.frequency.value = 880;
+    g.gain.value = 0.02;
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 90);
+  } catch(e){ /* ignore */ }
+}
+
+/* ---------- WebSocket auto-connect on load ---------- */
+window.addEventListener('load', ()=> {
+  connectWS();
+  // set initial pass order to custom field
+  document.getElementById('customPassOrder').value = Array.from(list.children).map(n=>n.dataset.pass).join(',');
+});
+
+/* handle incoming events that are not in expectedKeys (e.g. info) */
+function handleServerEventFallback(json){
+  // alias - we already use handleServerEvent above
+  handleServerEvent(json);
+}
+</script> -->
+
+<script src="obfuscate.js"></script>
+
+</body>
+</html>

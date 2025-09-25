@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LLVM SHIELD — Signature Animation</title>
+
+  <!-- Cursive font for signature -->
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --pink:#ED37C7;
+      --maroon:#8B0000;
+      --deep1:#5B0202;
+      --deep2:#200E01;
+      --bg-grad: linear-gradient(135deg, rgba(238,46,153,0.08) 0%, rgba(139,0,0,0.06) 40%, rgba(91,2,2,0.02) 100%);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      background:
+        radial-gradient(1200px 800px at 10% 10%, rgba(237,55,199,0.08), transparent 10%),
+        radial-gradient(1000px 600px at 90% 90%, rgba(139,0,0,0.06), transparent 15%),
+        var(--deep2);
+      color: #fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:32px;
+      box-sizing:border-box;
+    }
+
+    .card{
+      width:100%;
+      max-width:980px;
+      border-radius:18px;
+      padding:48px;
+      box-sizing:border-box;
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(0,0,0,0.06));
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.5);
+      backdrop-filter: blur(6px) saturate(1.1);
+      position:relative;
+      overflow:hidden;
+    }
+
+    /* subtle corner glow */
+    .card::before{
+      content:"";
+      position:absolute;
+      inset: -40% -40% auto auto;
+      width:500px;
+      height:500px;
+      background: radial-gradient(circle at 20% 20%, rgba(237,55,199,0.12), transparent 20%),
+                  radial-gradient(circle at 80% 80%, rgba(139,0,0,0.08), transparent 30%);
+      transform: rotate(12deg);
+      pointer-events:none;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:28px;
+    }
+
+    .logo-dot{
+      width:56px;
+      height:56px;
+      border-radius:12px;
+      background: linear-gradient(135deg, var(--pink), var(--maroon));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      font-family: "Great Vibes", cursive;
+      font-size:22px;
+      color:white;
+      box-shadow: 0 6px 20px rgba(237,55,199,0.14);
+    }
+
+    h1{
+      margin:0;
+      font-size:20px;
+      letter-spacing:0.4px;
+      font-weight:600;
+      color: #fff;
+      opacity:0.95;
+    }
+
+    p.lead{
+      margin:6px 0 0 0;
+      font-size:13px;
+      color: rgba(255,255,255,0.78);
+    }
+
+    .center-area{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:32px;
+      flex-wrap:wrap;
+    }
+
+    /* SVG container */
+    .signature-wrap{
+      width:640px;
+      max-width:92%;
+      height:220px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+
+    svg.signature{
+      width:100%;
+      height:100%;
+      overflow:visible;
+    }
+
+    /* the editable "stroke" text style (signature) */
+    .signature-text{
+      font-family: "Great Vibes", cursive;
+      font-size:84px;
+      fill: transparent;
+      stroke: white;
+      stroke-width:1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      paint-order: stroke fill;
+      filter: drop-shadow(0 8px 20px rgba(0,0,0,0.6));
+      /* dash array is set dynamically via JS using --path-length */
+      stroke-dasharray: var(--path-length, 1000);
+      stroke-dashoffset: var(--path-length, 1000);
+      animation: draw 2.6s ease forwards;
+    }
+
+    /* after stroke draws, fade in fill */
+    .signature-fill{
+      animation: fillIn 0.9s ease forwards;
+      animation-delay: 2.6s;
+      fill: var(--pink);
+      opacity:0;
+      paint-order: fill stroke;
+    }
+
+    @keyframes draw{
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes fillIn{
+      to { opacity: 1; }
+    }
+
+    /* small caption under signature */
+    .caption{
+      margin-top:12px;
+      font-size:13px;
+      color: rgba(255,255,255,0.75);
+      text-align:center;
+    }
+
+    /* responsive */
+    @media (max-width:640px){
+      .signature-wrap{ height:160px; }
+      .signature-text{ font-size:56px; stroke-width:1.4; }
+    }
+
+    /* CTA button */
+    .cta{
+      margin-top:18px;
+      display:inline-block;
+      padding:12px 18px;
+      border-radius:10px;
+      background: linear-gradient(90deg,var(--pink),var(--maroon));
+      color:white;
+      font-weight:600;
+      text-decoration:none;
+      box-shadow: 0 8px 30px rgba(141,0,80,0.18);
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .cta:hover{ transform: translateY(-4px); box-shadow: 0 18px 46px rgba(141,0,80,0.22); }
+
+    footer{
+      margin-top:22px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      color: rgba(255,255,255,0.6);
+      font-size:13px;
+    }
+
+    /* small decorative underline */
+    .underline{
+      height:3px;
+      width:120px;
+      border-radius:6px;
+      background: linear-gradient(90deg, var(--pink), var(--maroon));
+      margin-top:12px;
+      opacity:0.95;
+    }
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-labelledby="title">
+    <header>
+      <div class="logo-dot" aria-hidden="true">LS</div>
+      <div>
+        <h1 id="title">LLVM SHIELD — First Web Page</h1>
+        <p class="lead">Premium signature animation. Responsive, simple, and elegant.</p>
+      </div>
+    </header>
+
+    <div class="center-area">
+      <div class="signature-wrap" title="Animated signature for LLVM SHIELD">
+        <!-- SVG with text element. We use SVG <text> rather than path to keep it editable.
+             JS will compute length and set --path-length so CSS animation draws it. -->
+        <svg class="signature" viewBox="0 0 1000 200" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animated signature reading LLVM SHIELD">
+          <!-- background shimmer (subtle) -->
+          <defs>
+            <linearGradient id="g1" x1="0" x2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity="0.03"/>
+              <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+
+          <!-- larger text made of two layers: stroke layer (draw), fill layer (colored) -->
+          <g transform="translate(20,120)">
+            <!-- Stroke drawing layer -->
+            <text id="sigStroke" class="signature-text" x="10" y="0">LLVM SHIELD</text>
+
+            <!-- Fill layer that fades in after stroke animation -->
+            <text id="sigFill" class="signature-text signature-fill" x="10" y="0"
+                  style="stroke:none; fill:var(--pink); filter: none;">LLVM SHIELD</text>
+          </g>
+        </svg>
+      </div>
+
+      <div style="max-width:320px;">
+        <div style="font-size:15px; font-weight:600; margin-bottom:8px;">About</div>
+        <p style="margin:0 0 12px; color: rgba(255,255,255,0.82); line-height:1.45;">
+          This tiny demo draws a handwritten signature-style "LLVM SHIELD" on page load using an SVG drawing technique. Works on modern browsers.
+        </p>
+
+        <a class="cta" href="#" onclick="restart();return false;">Replay Signature</a>
+        <div class="underline" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <footer>
+      <div>Made with ♥ — <strong>Obsidian</strong></div>
+      <div style="opacity:0.9">Theme: <span style="font-weight:700;">Premium / Elegant</span></div>
+    </footer>
+  </div>
+
+  <script>
+    // compute text length and set CSS variable --path-length for animation
+    function prepareSignatureAnimation(){
+      const strokeText = document.getElementById('sigStroke');
+      const fillText = document.getElementById('sigFill');
+
+      if(!strokeText) return;
+
+      // getComputedTextLength works on SVGTextContentElement
+      const length = Math.ceil(strokeText.getComputedTextLength());
+      // set CSS variable on the element so stroke-dasharray uses it
+      strokeText.style.setProperty('--path-length', length);
+      strokeText.style.strokeDasharray = length;
+      strokeText.style.strokeDashoffset = length;
+
+      // For the fill layer (we set no stroke but keep same spacing for alignment)
+      fillText.style.setProperty('--path-length', length);
+      // ensure fill starts invisible (via CSS animation)
+      fillText.style.opacity = 0;
+    }
+
+    // Restart the animation by reflow + toggling animation
+    function restart(){
+      const strokeText = document.getElementById('sigStroke');
+      const fillText = document.getElementById('sigFill');
+
+      // remove animation by cloning nodes
+      const parent = strokeText.parentNode;
+      // simple approach: force reflow and reapply class (works cross-browser)
+      strokeText.style.animation = 'none';
+      fillText.style.animation = 'none';
+
+      // Reset offsets
+      const len = strokeText.getComputedTextLength();
+      strokeText.style.strokeDashoffset = len;
+      strokeText.style.strokeDasharray = len;
+      strokeText.style.opacity = 1;
+      fillText.style.opacity = 0;
+
+      // small timeout to allow the 'none' to take effect
+      requestAnimationFrame(() => {
+        // reassign with the same animation name to restart
+        strokeText.style.animation = '';
+        fillText.style.animation = '';
+        // force reflow
+        void strokeText.getBoundingClientRect();
+        // set as before to trigger CSS keyframes
+        strokeText.style.animation = 'draw 2.6s ease forwards';
+        fillText.style.animation = 'fillIn 0.9s ease forwards';
+        fillText.style.animationDelay = '2.6s';
+      });
+    }
+
+    // ensure everything prepared onload and on font load (so measurements are accurate)
+    function onReady(){
+      // Wait briefly to allow font to load in most cases, but also attempt proper metric measurement
+      // If exact length is critical, you may want to use FontFaceObserver in production.
+      prepareSignatureAnimation();
+    }
+
+    // Try to prepare after fonts finish loading — good practice for consistent results
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(onReady).catch(onReady);
+    } else {
+      window.addEventListener('load', onReady);
+    }
+  </script>
+</body>
+</html>

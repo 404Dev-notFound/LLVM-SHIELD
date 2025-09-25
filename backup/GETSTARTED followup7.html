@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LLVM Obfuscator UI</title>
+  <style>
+    body {
+      background: #0d0d0d;
+      color: #eaeaea;
+      font-family: "Segoe UI", sans-serif;
+      padding: 20px;
+    }
+    h2, h3 { color: #DA70D6; }
+    button {
+      background: linear-gradient(90deg, #483D8B, #6A5ACD);
+      color: #fff; border: none; padding: 10px 20px;
+      margin: 10px 0; border-radius: 8px; cursor: pointer;
+      font-weight: 600; transition: transform 0.2s;
+    }
+    button:hover { transform: scale(1.05); }
+    #advancedOrderList, #expectedList {
+      list-style: none; padding: 0; margin: 0;
+    }
+    #advancedOrderList li, #expectedList li {
+      padding: 8px; margin-bottom: 6px; border-radius: 6px;
+      background: rgba(255,255,255,0.05);
+      display: flex; justify-content: space-between; align-items: center;
+      cursor: grab;
+    }
+    #advancedOrderList li.dragging {
+      opacity: 0.4; background: #6A5ACD;
+    }
+    .status { min-width:90px; text-align:right; padding:0.2rem 0.6rem; border-radius:6px; font-weight:600; }
+    .pending { background:#333; color:#bbb; }
+    .running { background:#264653; color:#a8ffda; }
+    .done { background:#0a0; color:#fff; }
+    .failed { background:#a00; color:#fff; }
+    .ts { font-size:0.75rem; color:#9aa; margin-left:0.6rem; }
+    #progressBar {
+      height: 12px; background:#6A5ACD; width:0%; border-radius:8px;
+      transition: width 0.5s ease-out; margin: 10px 0;
+    }
+    #logConsole {
+      background:#111; border:1px solid #333;
+      padding:10px; height:120px; overflow:auto;
+      font-family: monospace; font-size: 0.85rem;
+    }
+    #liveReport {
+      background:#111; border:1px solid #444;
+      padding:10px; font-family: monospace; font-size:0.9rem;
+      color:#ADFF2F; white-space:pre-wrap;
+    }
+    #successBanner {
+      display:none; padding:10px; border-radius:8px; margin-top:10px;
+      background: linear-gradient(90deg,#228B22,#32CD32); color:#fff;
+      font-weight:600; box-shadow:0 0 10px rgba(50,205,50,0.4);
+    }
+  </style>
+</head>
+<body>
+  <h2>LLVM Obfuscator Dashboard</h2>
+
+  <h3>Advanced Pass Order (Drag & Drop)</h3>
+  <ul id="advancedOrderList">
+    <li data-key="inputParams" draggable="true">Logs all input parameters</li>
+    <li data-key="fileAttrs" draggable="true">Attributes of output file including size, obfuscation method</li>
+    <li data-key="bogusAmount" draggable="true">Amount of bogus code generated</li>
+    <li data-key="cyclesCompleted" draggable="true">Number of cycles completed</li>
+    <li data-key="stringEnc" draggable="true">String encryption done</li>
+    <li data-key="fakeInserted" draggable="true">Fake code inserted</li>
+    <li data-key="downloadReady" draggable="true">Obfuscated file ready for download</li>
+  </ul>
+  <button onclick="applyOrder()">Apply Order</button>
+
+  <h3>Expected Output (live):</h3>
+  <ul class="expected-list" id="expectedList">
+    <li data-key="inputParams">Logs all input parameters <span class="status pending" id="st-inputParams">Pending</span></li>
+    <li data-key="fileAttrs">Attributes of output file including size, obfuscation method <span class="status pending" id="st-fileAttrs">Pending</span></li>
+    <li data-key="bogusAmount">Amount of bogus code generated <span class="status pending" id="st-bogusAmount">Pending</span></li>
+    <li data-key="cyclesCompleted">Number of cycles completed <span class="status pending" id="st-cyclesCompleted">Pending</span></li>
+    <li data-key="stringEnc">String encryption done <span class="status pending" id="st-stringEnc">Pending</span></li>
+    <li data-key="fakeInserted">Fake code inserted <span class="status pending" id="st-fakeInserted">Pending</span></li>
+    <li data-key="downloadReady">Obfuscated file ready for download <span class="status pending" id="st-downloadReady">Pending</span></li>
+  </ul>
+
+  <div id="progressBar"></div>
+  <div id="logConsole"></div>
+  <button onclick="startProcess()">Compile & Obfuscate</button>
+  <div id="successBanner">✅ Obfuscated file is ready for download!</div>
+
+  <h3>Live Report JSON</h3>
+  <div id="liveReport">{}</div>
+
+  <!-- Sound effects -->
+  <audio id="tickSound" src="https://actions.google.com/sounds/v1/cartoon/pop.ogg"></audio>
+  <audio id="dingSound" src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg"></audio>
+
+<script>
+// ---- Drag & Drop for Advanced Order ----
+const list = document.getElementById('advancedOrderList');
+let draggingEl = null;
+
+list.addEventListener('dragstart', e => {
+  draggingEl = e.target;
+  e.target.classList.add('dragging');
+});
+list.addEventListener('dragend', e => {
+  e.target.classList.remove('dragging');
+  draggingEl = null;
+});
+list.addEventListener('dragover', e => {
+  e.preventDefault();
+  const afterElement = getDragAfterElement(list, e.clientY);
+  if (afterElement == null) {
+    list.appendChild(draggingEl);
+  } else {
+    list.insertBefore(draggingEl, afterElement);
+  }
+});
+function getDragAfterElement(container, y) {
+  const els = [...container.querySelectorAll('li:not(.dragging)')];
+  return els.reduce((closest, child) => {
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height/2;
+    if (offset < 0 && offset > closest.offset) {
+      return { offset: offset, element: child };
+    } else {
+      return closest;
+    }
+  }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+// ---- Sync Order ----
+function applyOrder() {
+  const orderList = document.getElementById('advancedOrderList');
+  const expectedList = document.getElementById('expectedList');
+
+  const mapping = {};
+  expectedList.querySelectorAll('li').forEach(li => {
+    mapping[li.dataset.key] = li;
+  });
+
+  expectedList.innerHTML = '';
+  orderList.querySelectorAll('li').forEach(li => {
+    const key = li.dataset.key;
+    if (mapping[key]) expectedList.appendChild(mapping[key]);
+  });
+}
+
+// ---- Status & Live Report ----
+function setExpectedStatus(key, state) {
+  const el = document.getElementById('st-' + key);
+  if (!el) return;
+  el.className = 'status ' + state;
+  let label = state[0].toUpperCase() + state.slice(1);
+  if (state === 'running') label = 'Running…';
+  el.innerText = label;
+
+  const li = el.closest('li');
+  const oldTs = li.querySelector('.ts');
+  if (oldTs) oldTs.remove();
+  if (state === 'done' || state === 'failed') {
+    const ts = document.createElement('span');
+    ts.className = 'ts';
+    ts.innerText = new Date().toLocaleTimeString();
+    li.appendChild(ts);
+  }
+
+  // sounds
+  if (state === 'running') document.getElementById('tickSound').play();
+  if (state === 'done') document.getElementById('dingSound').play();
+
+  updateLiveReport();
+}
+function updateLiveReport() {
+  const statuses = {};
+  document.querySelectorAll('#expectedList li').forEach(li => {
+    const key = li.dataset.key;
+    const status = li.querySelector('.status').innerText;
+    statuses[key] = status;
+  });
+  document.getElementById('liveReport').innerText =
+    JSON.stringify(statuses, null, 2);
+}
+
+// ---- Start Process ----
+function startProcess() {
+  document.querySelectorAll('#expectedList .status').forEach(st => {
+    st.className = 'status pending';
+    st.innerText = 'Pending';
+  });
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('logConsole').innerHTML = '';
+  document.getElementById('successBanner').style.display = 'none';
+  updateLiveReport();
+
+  const keys = Array.from(document.querySelectorAll('#expectedList li'))
+    .map(li => li.dataset.key);
+  const total = keys.length;
+
+  keys.forEach((k, idx) => {
+    setTimeout(() => {
+      setExpectedStatus(k, 'running');
+      document.getElementById('logConsole').innerHTML += `[${new Date().toLocaleTimeString()}] ${k} started\n`;
+      setTimeout(() => {
+        setExpectedStatus(k, 'done');
+        document.getElementById('logConsole').innerHTML += `[${new Date().toLocaleTimeString()}] ${k} done\n`;
+        const pct = Math.round(((idx+1)/total)*100);
+        document.getElementById('progressBar').style.width = pct+'%';
+        if (idx === total-1) {
+          document.getElementById('successBanner').style.display = 'block';
+        }
+      }, 600);
+    }, 1200*idx);
+  });
+}
+</script>
+</body>
+</html>

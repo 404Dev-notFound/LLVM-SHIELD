@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obfuscate - Code Obfuscation & Compilation Tool</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      margin:0;
+      font-family: 'Roboto', sans-serif;
+      background: #0f0f1a;
+      color:#eee;
+    }
+    a { text-decoration:none; color:#8B00FF; }
+    header, footer { padding:1rem 2rem; display:flex; justify-content:space-between; align-items:center; background:#080818; }
+    header h1 { margin:0; color:#8B00FF; font-size:1.8rem; font-weight:700; }
+    nav a { margin-left:1.5rem; color:#fff; font-weight:500; }
+    footer a { margin-right:1rem; color:#aaa; }
+    main { display:flex; justify-content:center; padding:2rem; }
+
+    /* Card */
+    .card { background:#1a1a2e; border-radius:12px; padding:2rem; width:600px; margin-bottom:2rem; box-shadow:0 6px 20px rgba(0,0,0,0.6); transform:translateX(100%); opacity:0; transition:all 0.5s ease; }
+    .card.active { transform:translateX(0); opacity:1; }
+    .card h2 { color:#8B00FF; }
+    label { display:block; margin-top:1rem; margin-bottom:0.5rem; font-weight:500; }
+    .file-upload-btn { padding:0.8rem 1.2rem; background:#5A00B0; color:#fff; border:none; border-radius:6px; cursor:pointer; transition:all 0.3s ease; }
+    .file-upload-btn:hover { background:#8B00FF; }
+
+    .file-list { margin-top:1rem; }
+    .file-item { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid #444; }
+    .file-item i { cursor:pointer; color:#8B00FF; margin-left:0.5rem; }
+
+    select, input[type=range], textarea { width:100%; padding:0.5rem; border-radius:6px; border:none; background:#333; color:#fff; margin-bottom:0.5rem; }
+
+    .toggle-switch { display:flex; align-items:center; margin-top:1rem; }
+    .toggle-switch input { margin-right:0.5rem; }
+    .tooltip { cursor:pointer; color:#aaa; margin-left:0.3rem; }
+
+    .btn-primary { background:#8B00FF; color:#fff; border:none; padding:0.8rem 1.2rem; margin-right:1rem; border-radius:6px; cursor:pointer; transition:all 0.3s ease; }
+    .btn-primary:hover { transform:scale(1.05); font-weight:bold; }
+    .btn-secondary { background:#555; color:#fff; border:none; padding:0.8rem 1.2rem; border-radius:6px; cursor:pointer; }
+    .btn-secondary:hover { background:#777; }
+
+    .progress-bar { width:100%; background:#333; border-radius:6px; overflow:hidden; margin-top:1rem; }
+    .progress { height:20px; width:0; background:#8B00FF; transition:width 0.5s ease; }
+    .log-console { background:#111; color:#0ff; padding:1rem; height:150px; overflow-y:auto; margin-top:1rem; border-radius:6px; font-family:monospace; font-size:0.9rem; }
+
+    .success-banner { background:#0a0; color:#fff; padding:1rem; border-radius:6px; margin-top:1rem; text-align:center; }
+
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); justify-content:center; align-items:center; }
+    .modal-content { background:#222; padding:2rem; border-radius:12px; width:600px; max-height:80vh; overflow-y:auto; position:relative; }
+    .modal-close { position:absolute; top:10px; right:15px; cursor:pointer; font-size:1.5rem; color:#8B00FF; }
+
+    /* Platform icons */
+    .platform-option { display:flex; align-items:center; gap:0.5rem; }
+    .platform-option i { font-size:1.2rem; }
+
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Obfuscate</h1>
+  <nav>
+    <a href="#">Home</a>
+    <a href="#">Docs</a>
+    <a href="#">Support</a>
+  </nav>
+</header>
+
+<main>
+  <div class="card active" id="step1">
+    <h2>Step 1: Upload Source</h2>
+    <label for="sourceFiles">Select Files</label>
+    <button class="file-upload-btn" onclick="document.getElementById('sourceFiles').click()">Upload Source</button>
+    <input type="file" id="sourceFiles" multiple onchange="displayFiles(event)">
+    <div class="file-list" id="fileList"></div>
+
+    <h2>Step 2: Choose Target Platform</h2>
+    <label for="targetPlatform">Target Platform <span class="tooltip" title="Select your desired platform.">&#9432;</span></label>
+    <select id="targetPlatform">
+      <option value="windows"><span class="platform-option"><i class="fa-brands fa-windows"></i> Windows</span></option>
+      <option value="linux"><span class="platform-option"><i class="fa-brands fa-linux"></i> Linux</span></option>
+      <option value="mac"><span class="platform-option"><i class="fa-brands fa-apple"></i> Mac</span></option>
+    </select>
+
+    <h2>Step 3: Configure Options</h2>
+    <label>Obfuscation Level <span class="tooltip" title="Select how aggressively to obfuscate.">&#9432;</span></label>
+    <select id="obfLevel">
+      <option>Low</option>
+      <option>Medium</option>
+      <option>High</option>
+      <option>Extreme</option>
+    </select>
+
+    <label>Cycles (control-flow depth)</label>
+    <input type="range" min="1" max="10" value="3" id="cyclesRange">
+    <span id="cyclesValue">3</span>
+
+    <div class="toggle-switch">
+      <input type="checkbox" id="stringEncrypt">
+      <label for="stringEncrypt">String Encryption <span class="tooltip" title="Encrypts all static string literals">&#9432;</span></label>
+    </div>
+
+    <label>Bogus Code Percentage</label>
+    <input type="range" min="0" max="100" value="20" id="bogusRange">
+    <span id="bogusValue">20%</span>
+
+    <h2>Step 4: Start Process</h2>
+    <button class="btn-primary" onclick="startProcess()">Compile & Obfuscate</button>
+    <button class="btn-secondary" onclick="resetProcess()">Cancel / Reset</button>
+
+    <div class="progress-bar">
+      <div class="progress" id="progressBar"></div>
+    </div>
+    <div class="log-console" id="logConsole"></div>
+
+    <div class="success-banner" id="successBanner" style="display:none;">
+      Process Completed Successfully
+      <div style="margin-top:1rem;">
+        <button class="btn-primary" id="downloadBtn">Download Obfuscated Binary</button>
+        <a href="#" onclick="openReport()">View Report</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>
+    <a href="#" onclick="openAdvanced()">Advanced</a>
+    <a href="#">About</a>
+    <a href="#">Settings</a>
+    <a href="#">Contact</a>
+  </div>
+</footer>
+
+<!-- Report Modal -->
+<div class="modal" id="reportModal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeReport()">&times;</span>
+    <h2>Process Report</h2>
+    <p>Input Files: <span id="reportFiles"></span></p>
+    <p>Target Platform: <span id="reportPlatform"></span></p>
+    <p>Obfuscation Level: <span id="reportObf"></span></p>
+    <p>Cycles: <span id="reportCycles"></span></p>
+    <p>String Encryption: <span id="reportEncrypt"></span></p>
+    <p>Bogus Code Percentage: <span id="reportBogus"></span></p>
+    <p>Timestamp: <span id="reportTime"></span></p>
+    <button class="btn-primary" onclick="exportPDF()">Export PDF</button>
+  </div>
+</div>
+
+<!-- Advanced Modal -->
+<div class="modal" id="advancedModal">
+  <div class="modal-content">
+    <span class="modal-close" onclick="closeAdvanced()">&times;</span>
+    <h2>Advanced Configuration</h2>
+    <label>Custom LLVM Pass Order</label>
+    <textarea rows="5" style="width:100%; background:#333; color:#fff;"></textarea>
+    <label>Expert Flags / Parameters</label>
+    <textarea rows="5" style="width:100%; background:#333; color:#fff;"></textarea>
+    <p style="color:#8B00FF; font-weight:bold;">Warning: Changing these settings may break compilation if used incorrectly.</p>
+    <button class="btn-primary">Apply</button>
+    <button class="btn-secondary" onclick="closeAdvanced()">Cancel</button>
+  </div>
+</div>
+
+<script>
+  // File display
+  function displayFiles(event) {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '';
+    Array.from(event.target.files).forEach(file => {
+      const div = document.createElement('div');
+      div.className = 'file-item';
+      div.innerHTML = `${file.name} (${Math.round(file.size/1024)} KB) <i onclick="this.parentElement.remove()">✖</i>`;
+      fileList.appendChild(div);
+    });
+  }
+
+  document.getElementById('cyclesRange').addEventListener('input', function(){ document.getElementById('cyclesValue').innerText = this.value; });
+  document.getElementById('bogusRange').addEventListener('input', function(){ document.getElementById('bogusValue').innerText = this.value + '%'; });
+
+  function startProcess() {
+    const progress = document.getElementById('progressBar');
+    const log = document.getElementById('logConsole');
+    let width=0;
+    progress.style.width='0%';
+    log.innerHTML='';
+    const interval = setInterval(()=>{
+      if(width>=100){
+        clearInterval(interval);
+        document.getElementById('successBanner').style.display='block';
+        return;
+      }
+      width+=10;
+      progress.style.width=width+'%';
+      const time=new Date().toLocaleTimeString();
+      log.innerHTML+=`[${time}] Step ${width/10}: Processing...\n`;
+      log.scrollTop=log.scrollHeight;
+    },500);
+  }
+
+  function resetProcess() {
+    document.getElementById('progressBar').style.width='0%';
+    document.getElementById('logConsole').innerHTML='';
+    document.getElementById('successBanner').style.display='none';
+  }
+
+  // Report Modal
+  function openReport() {
+    const modal = document.getElementById('reportModal');
+    document.getElementById('reportFiles').innerText = Array.from(document.getElementById('sourceFiles').files).map(f=>f.name).join(', ');
+    document.getElementById('reportPlatform').innerText = document.getElementById('targetPlatform').value;
+    document.getElementById('reportObf').innerText = document.getElementById('obfLevel').value;
+    document.getElementById('reportCycles').innerText = document.getElementById('cyclesRange').value;
+    document.getElementById('reportEncrypt').innerText = document.getElementById('stringEncrypt').checked?'Yes':'No';
+    document.getElementById('reportBogus').innerText = document.getElementById('bogusRange').value+'%';
+    document.getElementById('reportTime').innerText = new Date().toLocaleString();
+    modal.style.display='flex';
+  }
+  function closeReport() { document.getElementById('reportModal').style.display='none'; }
+
+  // Advanced Modal
+  function openAdvanced() { document.getElementById('advancedModal').style.display='flex'; }
+  function closeAdvanced() { document.getElementById('advancedModal').style.display='none'; }
+
+  function exportPDF(){ alert('PDF export simulated!'); }
+
+  // Download simulation
+  document.getElementById('downloadBtn').addEventListener('click', ()=>{
+    const blob = new Blob(["Obfuscated binary content"], {type:"application/octet-stream"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url;
+    a.download='obfuscated_binary.bin';
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+</script>
+
+</body>
+</html>
