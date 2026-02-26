@@ -1,0 +1,12 @@
+{
+  "input_parameters": {
+  "cycles": 3,
+  "enableStringEncryption": true,
+  "enableBogusControlFlow": true,
+  "bogusCodeIntensity": 5,
+  "randomSeed": 12345
+},
+  "cycles_completed": 3,
+  "bogus_blocks": 4697,
+  "string_encryptions": 3
+}
